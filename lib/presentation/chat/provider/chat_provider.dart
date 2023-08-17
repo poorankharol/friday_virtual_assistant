@@ -17,3 +17,11 @@ final chatDataProvider = FutureProvider.family<Chat, String>(
     return ref.watch(movieDetailsRepositoryProvider).requestChat(prompt);
   },
 );
+
+final chatDataState = StateProvider<AsyncValue<Chat>>(
+      (ref) => const AsyncValue.loading(),
+);
+
+final chatDataStateLoading = StateProvider<bool>(
+      (ref) => false,
+);

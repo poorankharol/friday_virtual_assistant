@@ -188,10 +188,10 @@ class _ImageGenerateScreenState extends ConsumerState<ImageGenerateScreen> {
                             var text = inputController.text.trim();
                             inputController.clear();
                             ref.read(todosStateLoading.notifier).state = true;
-                            final todos = await ref
+                            final image = await ref
                                 .read(imageGenerateDataProvider(text).future);
                             ref.read(todosState.notifier).state =
-                                AsyncValue.data(todos);
+                                AsyncValue.data(image);
                             ref.read(todosStateLoading.notifier).state = false;
                           } catch (e) {
                             ref.read(todosState.notifier).state =

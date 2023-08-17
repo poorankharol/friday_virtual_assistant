@@ -17,17 +17,17 @@ class NewChatScreen extends ConsumerStatefulWidget {
 
 class _NewChatScreenState extends ConsumerState<NewChatScreen> {
   final speechToText = SpeechToText();
-  String textResult = "";
-  String inputText = "";
-  late Future<Chat> chat;
+  //String textResult = "";
+  //String inputText = "";
   final TextEditingController inputController = TextEditingController();
-  bool isClicked = false;
-  bool isInputEmpty = true;
+  //bool isClicked = false;
+  //bool isInputEmpty = true;
   List<ChatTable> chatData = [];
 
   @override
   void initState() {
     super.initState();
+    ref.read(chatDataStateLoading.notifier).state = false;
     initializeSpeechToText();
   }
 
@@ -51,58 +51,65 @@ class _NewChatScreenState extends ConsumerState<NewChatScreen> {
     speechToText.isListening ? null : sendRequest(recordedAudioString);
   }
 
-  void sendRequest(String recordedString) {
-    setState(() {
-      inputText = recordedString;
-      isClicked = true;
-    });
+  void sendRequest(String recordedString) async {
+    // setState(() {
+    //   isClicked = true;
+    // });
+    try {
+      ref.read(chatDataStateLoading.notifier).state = true;
+      chatData.add(ChatTable(true, recordedString));
+      final chat = await ref.read(chatDataProvider(recordedString).future);
+      ref.read(chatDataState.notifier).state =
+          AsyncValue.data(chat);
+      ref.read(chatDataStateLoading.notifier).state = false;
+    } catch (e) {
+      ref.read(chatDataState.notifier).state =
+          AsyncValue.error(e, StackTrace.current);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final AsyncValue<Chat> chatDataRef = ref.watch(chatDataState);
+    final chatLoading = ref.watch(chatDataStateLoading);
     return Scaffold(
       body: Column(
         children: [
           Expanded(
             child: SingleChildScrollView(
-              child: isClicked
-                  ? Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Consumer(
-                        builder: (context, watch, child) {
-                          final asyncValue =
-                              watch.watch(chatDataProvider(inputText));
-                          return asyncValue.when(
-                            data: (data) {
-                              isClicked = false;
-                              chatData
-                                  .add(ChatTable(false, data.choices[0].text));
-                              return ListView.builder(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: chatData.length,
-                                  itemBuilder: (itemBuilder, index) {
-                                    return ChatItem(
-                                        isMe: chatData[index].isMe,
-                                        message: chatData[index].message);
-                                  });
-                            },
-                            error: (error, stackTrace) {
-                              return Center(
-                                child: Text(error.toString()),
-                              );
-                            },
-                            loading: () {
-                              return Center(
-                                child: LoadingAnimationWidget.hexagonDots(
-                                    size: 50, color: Colors.deepPurple),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    )
-                  : const SizedBox(),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: chatDataRef.when(
+                  data: (data) {
+                    //isClicked = false;
+                    chatData.add(ChatTable(false, data.choices[0].text));
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: chatData.length,
+                      itemBuilder: (itemBuilder, index) {
+                        return ChatItem(
+                            isMe: chatData[index].isMe,
+                            message: chatData[index].message);
+                      },
+                    );
+                  },
+                  error: (error, stackTrace) {
+                    return Center(
+                      child: Text(error.toString()),
+                    );
+                  },
+                  loading: () {
+                    if (chatLoading) {
+                      return Center(
+                        child: LoadingAnimationWidget.hexagonDots(
+                            size: 50, color: Colors.deepPurple),
+                      );
+                    }
+                    return null;
+                  },
+                ),
+              ),
             ),
           ),
           Padding(
@@ -130,40 +137,49 @@ class _NewChatScreenState extends ConsumerState<NewChatScreen> {
                       ),
                     ),
                     controller: inputController,
-                    onChanged: (value) {
-                      setState(() {
-                        final newMessage = value;
-                        if (newMessage.isNotEmpty) {
-                          //add these lines
-                          isInputEmpty = false;
-                        } else {
-                          isInputEmpty = true;
-                        }
-                      });
-                    },
+                    // onChanged: (value) {
+                    //   setState(() {
+                    //     final newMessage = value;
+                    //     if (newMessage.isNotEmpty) {
+                    //       //add these lines
+                    //       isInputEmpty = false;
+                    //     } else {
+                    //       isInputEmpty = true;
+                    //     }
+                    //   });
+                    // },
                   ),
                 ),
                 const SizedBox(
                   width: 10,
                 ),
                 InkWell(
-                  onTap: () {
+                  onTap: () async {
                     if (inputController.text.isNotEmpty) {
-                      setState(() {
-                        isClicked = true;
-                        inputText = inputController.text.toString();
-                        chatData.add(ChatTable(true, inputText));
-                      });
-                      inputController.clear();
+                      try {
+                        chatData.clear();
+                        var text = inputController.text.trim();
+                        inputController.clear();
+                        ref.read(chatDataStateLoading.notifier).state = true;
+                        chatData.add(ChatTable(true, text));
+                        final chat = await ref.read(chatDataProvider(text).future);
+                        ref.read(chatDataState.notifier).state =
+                            AsyncValue.data(chat);
+                        ref.read(chatDataStateLoading.notifier).state = false;
+                      } catch (e) {
+                        ref.read(chatDataState.notifier).state =
+                            AsyncValue.error(e, StackTrace.current);
+                      }
                     }
                   },
                   child: AnimatedContainer(
                     padding: const EdgeInsets.all(10),
                     duration: const Duration(milliseconds: 1000),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       color:
-                          isInputEmpty ? Colors.grey : Colors.deepPurpleAccent,
+                          //isInputEmpty ? Colors.grey :
+                          Colors.deepPurpleAccent,
                     ),
                     curve: Curves.bounceInOut,
                     child: const Center(
